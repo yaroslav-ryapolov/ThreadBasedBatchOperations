@@ -28,10 +28,27 @@ public class ServiceStub
 
     public static async Task<bool> ComplexWithMultipleThreadsCreateObjectStub(RepositoryStub repository, int i, Guid guid)
     {
-        var bunchOfTasks = Enumerable.Range(1, 10).Select(j => repository.DoSomethingAsync(j * i, guid))
-            .ToList();
+        const int TaskCount = 3;
 
-        await Task.WhenAll(bunchOfTasks.Cast<Task>().ToArray());
+        List<Task<int>>? bunchOfTasks = null;
+        await repository.WhenAllRepositoryAwareTasksAsync(
+            guid,
+            TaskCount,
+            () =>
+            {
+                var result = Enumerable.Range(1, TaskCount)
+                    .Select(j =>
+                    {
+                        var subTaskGuid = Guid.NewGuid();
+
+
+                        return (repository.DoSomethingAsync(j * i, subTaskGuid), subTaskGuid);
+                    })
+                    .ToList();
+
+                bunchOfTasks = result.Select(x => x.Item1).ToList();
+                return result.Select(x => ((Task)x.Item1, x.Item2));
+            });
 
         return bunchOfTasks.All(t => t is { IsCompleted: true, Result: > 0 });
     }

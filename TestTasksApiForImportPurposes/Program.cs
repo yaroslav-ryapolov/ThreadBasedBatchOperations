@@ -4,10 +4,11 @@ using TestTasksApiForImportPurposes;
 
 var repository = new RepositoryStub();
 
-const int noOperationTasksCount = 3;
-const int simpleTasksCount = 3;
-const int complexTasksCount = 3;
-const int totalTasksCount = noOperationTasksCount + simpleTasksCount + complexTasksCount;
+const int noOperationTasksCount = 10;
+const int simpleTasksCount = 1_000;
+const int complexTasksCount = 1_000;
+const int superComplexTasksCount = 1_000;
+const int totalTasksCount = noOperationTasksCount + simpleTasksCount + complexTasksCount + superComplexTasksCount;
 repository.EnterBatchMode(totalTasksCount);
 
 ConsoleLogger.WriteLine($"there are {totalTasksCount} tasks");
@@ -33,15 +34,22 @@ var complexTasks = Enumerable.Range(0, complexTasksCount)
         return ServiceStub.ComplexWithSingleThreadCreateObjectStub(repository, i, guid)
             .ContinueWith((_) => repository.TaskCompleted(guid));
     });
+var superComplexTasks = Enumerable.Range(0, superComplexTasksCount)
+    .Select(i =>
+    {
+        var guid = Guid.NewGuid();
+        return ServiceStub.ComplexWithMultipleThreadsCreateObjectStub(repository, i, guid)
+            .ContinueWith((_) => repository.TaskCompleted(guid));
+    });
 
 var tasksToWait = noOperationTasks
     .Concat(simpleTasks)
     .Concat(complexTasks)
+    .Concat(superComplexTasks)
     .ToList();
-
-
 var allTasksTask = Task.WhenAll(tasksToWait);
 
+// Better hide in ExitBatchMode or something like that
 int i = 0;
 bool needToWaitWithoutBatchSteps = false;
 while (!needToWaitWithoutBatchSteps)
@@ -50,8 +58,11 @@ while (!needToWaitWithoutBatchSteps)
 
     needToWaitWithoutBatchSteps = await repository.WaitWhenReadyForNextStepAsync();
 
-    repository.DoBatchStep();
-    i++;
+    if (!needToWaitWithoutBatchSteps)
+    {
+        repository.DoBatchStep();
+        i++;
+    }
 }
 
 ConsoleLogger.WriteLine("HERE WE GO, going to just wait");
