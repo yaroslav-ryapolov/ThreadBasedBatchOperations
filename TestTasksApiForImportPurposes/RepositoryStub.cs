@@ -93,6 +93,8 @@ public class RepositoryStub
 
     public void DoBatchStep()
     {
+        // 2. все запланированное достаем из БД и кладем в кеш
+
         Interlocked.Exchange(ref this.callsCounter, 0);
         ConsoleLogger.WriteLine($"did the batch step ({this.completedTasksCounter} tasks completed)");
 
@@ -129,8 +131,13 @@ public class RepositoryStub
 
         this.CompleteManagerTaskIfAllCallsAreStopped(guid);
 
+        // 1. положит в очередь на получение из БД по пришедшим параметрам
+
         ConsoleLogger.WriteLine($"going to wait for callers source {callersTaskToWait.Item2}", guid);
         await callersTaskToWait.Item1.Task;
+
+        // 3. достаем необходимое из кеша, а не из БД и возвращаем
+
         return i;
     }
 

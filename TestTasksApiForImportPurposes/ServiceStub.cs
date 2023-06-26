@@ -4,7 +4,7 @@ public class ServiceStub
 {
     public static async Task<bool> NoRepositoryCallCreateObjectStub(RepositoryStub repository, int i, Guid guid)
     {
-        await Task.Delay(i * 1_000);
+        // await Task.Delay(i * 10);
         return i % 2 == 0;
     }
 
